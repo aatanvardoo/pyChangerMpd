@@ -3,11 +3,10 @@ from serialConnection import SerialPort
 import time
 import threading
 from threading import Thread
-import RPi.GPIO as GPIO
 from queue import Queue
 import pyMessages
 from pyMpd import ibusMpd
-
+import RPi.GPIO as GPIO
 import os
 
 current_sec_time = lambda: int(round(time.time()))
@@ -81,6 +80,7 @@ class Ibus():
         self.model = model
         self.debugFlag = debug
         print("Debug logs are " + str(debug))
+
         #initialize kodi sub module
         self.player = ibusMpd(debug)
         #initialize serial sub module
@@ -326,7 +326,7 @@ class Ibus():
                 else:
                     self.cdStatus = CD_STATUS_SCAN_BACKWARD
                     
-            prefix = prefix + "Scanning. It is not HANDLED"
+            print("Scanning. It is not HANDLED")
             #is this really needed?     
             self.sendStatus()
             

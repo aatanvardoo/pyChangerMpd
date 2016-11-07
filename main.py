@@ -1,7 +1,6 @@
 from pyIbus import Ibus
 from optparse import OptionParser
 
-phoneLed1=[0xC8,0x04,0xF0,0x2B,0x54,0x43]
 
 
 def main():
@@ -13,6 +12,9 @@ def main():
     
     if opts.model is not None:
         print("Model: " + opts.model)
+    else:
+        print("Please add bmw model")
+        return
     
     if opts.debug:
         ibusDev = Ibus(opts.model, True ) 
