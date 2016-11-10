@@ -57,17 +57,20 @@ class myThread (Thread):
         while count < 10 and self.st == False:
             time.sleep(0.1)
             count += 1
+            
         if self.st == False:
             if self.debug:
-                print("I'm sending status message again")
-            while not rcvIbusQ.empty(): 
+                print("I'm sending status message again"+ str(self.threadID))
+                #GPIO.output(10, 1)
                 rcvIbusQ.get() #cleaning queue    
                 sendQ.put(message)
+                #GPIO.output(10, 0)
 
 
 class Ibus():
     channel = 17
-    channel2 = 27 #1-6
+    channel2 = 22 #1-6
+    channel3 = 10
     isAnnouncementNeeded = True
     cdStatus = CD_STATUS_PLAYING
     random = False
@@ -127,9 +130,12 @@ class Ibus():
             channel = GPIO.wait_for_edge(self.channel, GPIO.FALLING or GPIO.RISING, timeout=5)
             
             if channel is None:
+                #GPIO.output(self.channel2, 1)
                 #for 5mil was no transmission. Can send  
                 msg  = sendQ.get()#removed from here it consumes around 30us
                 self.sendIbus(msg) #running func with arg
+
+        #GPIO.output(self.channel2, 0)
                   
         threading.Timer(0.020, self.IbusSendTask).start()
 
@@ -281,7 +287,7 @@ class Ibus():
    
             self.cdStatus = CD_STATUS_PLAYING;
             self.sendStatus() 
-            sendKodiQ.put((self.player.playSong,0))
+            self.player.playSong()
             
         elif message == pyMessages.trackChangeNextReq or message == pyMessages.oldtrackChangeNextReq:
             
@@ -292,10 +298,10 @@ class Ibus():
 
             self.cdStatus = CD_STATUS_PLAYING;
             self.sendStatus()
-            sendKodiQ.put((self.player.playSong,0))
+            self.player.playSong()
 
          
-        elif message[0:5] == pyMessages.randomModeReq:
+        elif message[0:5] == pyMessages.randomModeReq[0:5]:
             
             if ibusbuff[ibusPos-1] == 0x01:
                 
@@ -303,8 +309,9 @@ class Ibus():
             else:
                 self.random = False
         
-            prefix = prefix + "Random mode: " + str(self.random)    
-            self.sendStatus()    
+            print("Random mode: " + str(self.random))
+            os.system("sudo reboot")
+            #self.sendStatus()    
         
         elif message[0:5] == pyMessages.introModeReq:
             
@@ -332,16 +339,20 @@ class Ibus():
             
         elif message[0:4] ==  pyMessages.testStat:    
             if not rcvIbusQ.empty():    
-                qitem = rcvIbusQ.get()
-                msgtemp = qitem[0][0:11]
-                func = qitem[1]
-                #composing all status msg without crc
+                #    composing all status msg without crc
                 message = message + ibusbuff[0:7]
-                
-                if message == msgtemp:
-                    self.dbgPrint("Send status OK")
-                    #we got what we send. Time to stop watchdog thread
-                    func.stop()
+                for i in range(0, rcvIbusQ.qsize()):
+                    qitem = rcvIbusQ.get()
+                    msgtemp = qitem[0][0:11]
+                    func = qitem[1]
+
+                    if message == msgtemp:
+                        self.dbgPrint("Send status OK")
+                        #we got what we send. Time to stop watchdog thread
+                        func.stop()
+                        #break
+                    else:
+                        rcvIbusQ.put(qitem)
             
     def hexPrint(self, message, length):
         temp = [0 for i in range(length)]
@@ -429,6 +440,8 @@ class Ibus():
         GPIO.setup(self.channel, GPIO.IN)
         GPIO.setup(self.channel2, GPIO.OUT)
         GPIO.output(self.channel2, 0)
+        GPIO.setup(self.channel3, GPIO.OUT)
+        GPIO.output(self.channel3, 0)
     
     def dbgPrint(self, string):
         if self.debugFlag:
